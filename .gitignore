@@ -8,10 +8,6 @@ env/
 venv/
 .venv/
 
-# Allure отчёты (оставляем в репо для сдачи)
-# allure-results/
-# allure-report/
-
 # Pytest
 .pytest_cache/
 .coverage
@@ -27,6 +23,3 @@ htmlcov/
 .DS_Store
 Thumbs.db
 *.log
-/tests/__pycache__
-/tests/.pytest_cache
-/allure-results
