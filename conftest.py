@@ -10,7 +10,6 @@ from webdriver_manager.firefox import GeckoDriverManager
 from pages.login_page import LoginPage
 from pages.main_page import MainPage
 from data import TestData
-import time
 
 @pytest.fixture(params=["chrome", "firefox"], scope="function")
 def driver(request):
@@ -50,21 +49,11 @@ def close_modal_safe(driver, main_page):
     
     if browser == 'firefox':
         try:
-            close_button = driver.find_element(*main_page.ORDER_MODAL_CLOSE)
-            driver.execute_script("arguments[0].click();", close_button)
+            main_page.click_order_modal_close_js()
         except:
-            driver.execute_script("""
-                var overlay = document.querySelector('.Modal_modal_overlay__x2ZCr');
-                if (overlay) overlay.click();
-            """)
+            main_page.click_modal_overlay_js()
     else:
         try:
-            driver.find_element(*main_page.ORDER_MODAL_CLOSE).click()
+            main_page.click_order_modal_close()
         except:
-            close_button = driver.find_element(*main_page.ORDER_MODAL_CLOSE)
-            driver.execute_script("arguments[0].click();", close_button)
-    
-    time.sleep(1)
-
-
-
+            main_page.click_order_modal_close_js()

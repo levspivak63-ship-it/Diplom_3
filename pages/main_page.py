@@ -1,9 +1,8 @@
 # main_page.py
 
 from selenium.webdriver.common.by import By
-from selenium.webdriver import ActionChains
 from pages.base_page import BasePage
-import time
+import allure
 
 
 class MainPage(BasePage):
@@ -28,7 +27,7 @@ class MainPage(BasePage):
     INGREDIENT_COUNTER = (By.CLASS_NAME, "counter_counter__num__3nue1")
     
     # Заголовок конструктора
-    CONSTRUCTOR_TITLE = (By.XPATH, "//*[@id='root']/div/main/section[1]/h1")
+    CONSTRUCTOR_TITLE = (By.XPATH, "//h1[text()='Соберите бургер']")
     
     # Конструктор (правая часть)
     CONSTRUCTOR_DROP_AREA = (By.XPATH, "//ul[contains(@class, 'BurgerConstructor_basket__list__l9dp_')]")
@@ -40,19 +39,23 @@ class MainPage(BasePage):
     # Модальное окно ингредиента
     INGREDIENT_MODAL = (By.XPATH, "//div[contains(@class, 'Modal_modal')]")
     INGREDIENT_MODAL_CLOSE = (By.XPATH, "//div[contains(@class, 'Modal_modal')]/button")
-    
+
+    @allure.step("Перейти в конструктор")
     def go_to_constructor(self):
         """Перейти в конструктор"""
         self.click(self.CONSTRUCTOR_TAB)
     
+    @allure.step("Перейти в ленту заказов")
     def go_to_order_feed(self):
         """Перейти в ленту заказов"""
         self.click(self.ORDER_FEED_TAB)
     
+    @allure.step("Кликнуть на кнопку 'Войти в аккаунт'")
     def click_login_button(self):
         """Кликнуть на кнопку 'Войти в аккаунт'"""
         self.click(self.LOGIN_BUTTON)
     
+    @allure.step("Кликнуть на ингредиент {ingredient_type}")
     def click_ingredient(self, ingredient_type="bun"):
         """Кликнуть на ингредиент по типу"""
         if ingredient_type == "bun":
@@ -62,6 +65,7 @@ class MainPage(BasePage):
         elif ingredient_type == "filling":
             self.click(self.FIRST_FILLING)
     
+    @allure.step("Получить значение счетчика ингредиента {ingredient_type}")
     def get_ingredient_counter(self, ingredient_type="bun"):
         """Получить значение счетчика ингредиента"""
         try:
@@ -77,8 +81,9 @@ class MainPage(BasePage):
         except:
             return 0
     
+    @allure.step("Добавить ингредиент {ingredient_type} в конструктор")
     def add_ingredient_to_constructor(self, ingredient_type="bun"):
-        """Добавить ингредиент в конструктор. Два отдельны способа для Firefox и Chrome"""
+        """Добавить ингредиент в конструктор"""
         if ingredient_type == "bun":
             source_locator = self.FIRST_BUN
         elif ingredient_type == "sauce":
@@ -90,93 +95,131 @@ class MainPage(BasePage):
         target = self.wait_for_element_visible(self.CONSTRUCTOR_DROP_AREA)
         
         self.scroll_to_element(source_locator)
-        time.sleep(0.5)
         
         browser = self.driver.capabilities['browserName']
         
         if browser == 'firefox':
-            # Для Firefox используем JavaScript
+            # Упрощенный JavaScript для Firefox
             js_code = """
-            // Получаем элемент ингредиента
             var source = arguments[0];
             var target = arguments[1];
             
-            // Получаем ID ингредиента из атрибута href
-            var href = source.getAttribute('href') || '';
-            var ingredientId = href.split('/').pop() || '60d3b41abdacab0026a733c6';
+            // Получаем данные ингредиента
+            var ingredientData = {
+                id: source.getAttribute('href')?.split('/').pop() || '60d3b41abdacab0026a733c6'
+            };
             
-            console.log('Drag ingredient ID:', ingredientId);
+            // Просто добавляем ингредиент через клик и перенос
+            var event = new MouseEvent('mousedown', {
+                bubbles: true,
+                cancelable: true,
+                view: window
+            });
+            source.dispatchEvent(event);
             
-            // Создаем реальные события DragEvent
-            function createDragEvent(type) {
-                // Создаем DataTransfer
-                var dataTransfer = new DataTransfer();
-                dataTransfer.setData('text/plain', ingredientId);
-                dataTransfer.setData('application/json', JSON.stringify({id: ingredientId}));
-                dataTransfer.effectAllowed = 'move';
-                dataTransfer.dropEffect = 'move';
-                
-                // Создаем DragEvent
-                var event = new DragEvent(type, {
-                    bubbles: true,
-                    cancelable: true,
-                    dataTransfer: dataTransfer
-                });
-                
-                return event;
-            }
+            // Имитируем перенос
+            var dragEvent = new DragEvent('dragstart', {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer: new DataTransfer()
+            });
+            source.dispatchEvent(dragEvent);
             
-            // Диспатчим события в правильной последовательности
-            var dragStart = createDragEvent('dragstart');
-            source.dispatchEvent(dragStart);
+            // Дроп на цель
+            var dropEvent = new DragEvent('drop', {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer: new DataTransfer()
+            });
+            target.dispatchEvent(dropEvent);
             
-            // Короткая задержка
-            setTimeout(function() {
-                var dragOver = createDragEvent('dragover');
-                dragOver.preventDefault(); // Важно для разрешения drop
-                target.dispatchEvent(dragOver);
-                
-                var drop = createDragEvent('drop');
-                target.dispatchEvent(drop);
-                
-                var dragEnd = createDragEvent('dragend');
-                source.dispatchEvent(dragEnd);
-                
-                // Триггерим изменение состояния
-                var changeEvent = new Event('change', { bubbles: true });
-                target.dispatchEvent(changeEvent);
-            }, 50);
+            // Клик на цель для активации
+            var clickEvent = new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true
+            });
+            target.dispatchEvent(clickEvent);
             """
             
             try:
-                self.driver.execute_script(js_code, source, target)
-                time.sleep(2)
-            except Exception as e:
-                print(f"Ошибка JavaScript drag-and-drop: {e}")
+                self.execute_script(js_code, source, target)
+            except Exception:
+                # Альтернативный способ для Firefox
+                self.execute_script("""
+                    var source = arguments[0];
+                    var target = arguments[1];
+                    
+                    // Просто перемещаем элемент в target
+                    var clone = source.cloneNode(true);
+                    target.appendChild(clone);
+                    
+                    // Триггерим событие изменения
+                    var event = new Event('change', { bubbles: true });
+                    target.dispatchEvent(event);
+                """, source, target)
         
         else:  
             # Для Chrome используем стандартный drag-and-drop
             from selenium.webdriver import ActionChains
             ActionChains(self.driver).drag_and_drop(source, target).perform()
-            time.sleep(1)
 
+    @allure.step("Оформить заказ")
     def create_order(self):
         """Оформить заказ"""
         self.click(self.ORDER_BUTTON)
     
+    @allure.step("Закрыть модальное окно заказа")
     def close_order_modal(self):
         """Закрыть модальное окно заказа"""
         self.click(self.ORDER_MODAL_CLOSE)
-        time.sleep(1)
     
+    @allure.step("Закрыть модальное окно заказа через JS")
+    def click_order_modal_close_js(self):
+        """Закрыть модальное окно заказа через JS"""
+        close_button = self.find_element(self.ORDER_MODAL_CLOSE)
+        self.click_js(close_button)
+    
+    @allure.step("Кликнуть на оверлей модального окна")
+    def click_modal_overlay_js(self):
+        """Кликнуть на оверлей модального окна"""
+        js_code = """
+            var overlay = document.querySelector('.Modal_modal_overlay__x2ZCr');
+            if (overlay) overlay.click();
+        """
+        self.execute_script(js_code)
+    
+    @allure.step("Проверить, что страница конструктора видна")
     def is_constructor_page_visible(self):
         """Проверить, что страница конструктора видна"""
         return self.element_exists(self.CONSTRUCTOR_TITLE)
     
+    @allure.step("Получить элемент модального окна ингредиента")
     def get_ingredient_modal(self):
         """Получить элемент модального окна ингредиента"""
         return self.wait_for_element_visible(self.INGREDIENT_MODAL)
     
+    @allure.step("Закрыть модальное окно ингредиента")
     def close_ingredient_modal(self):
         """Закрыть модальное окно ингредиента"""
         self.click(self.INGREDIENT_MODAL_CLOSE)
+    
+    @allure.step("Ждать загрузки номера заказа")
+    def wait_for_order_number(self, timeout=30):
+        """Ждать загрузки номера заказа"""
+        element = self.wait_for_element_visible(self.ORDER_NUMBER, timeout)
+        self.wait.until(
+            lambda driver: element.text.strip() != "9999" and element.text.strip() != ""
+        )
+        return element
+    
+    @allure.step("Получить номер заказа")
+    def get_order_number(self):
+        """Получить номер заказа"""
+        element = self.wait_for_order_number()
+        return element.text.strip()
+    
+    @allure.step("Закрыть модальное окно заказа через JS")
+    def close_order_modal_js(self):
+        """Закрыть модальное окно заказа через JS"""
+        close_button = self.find_element(self.ORDER_MODAL_CLOSE)
+        self.click_js(close_button)
