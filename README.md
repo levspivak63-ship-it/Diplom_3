@@ -49,3 +49,4 @@ pytest --alluredir=allure-results
 
 # Просмотр отчёта
 allure serve allure-results
+

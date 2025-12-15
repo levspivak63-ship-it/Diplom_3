@@ -43,17 +43,3 @@ def login(driver):
     
     return main_page
 
-def close_modal_safe(driver, main_page):
-    """Безопасное закрытие модального окна"""
-    browser = driver.capabilities['browserName']
-    
-    if browser == 'firefox':
-        try:
-            main_page.click_order_modal_close_js()
-        except:
-            main_page.click_modal_overlay_js()
-    else:
-        try:
-            main_page.click_order_modal_close()
-        except:
-            main_page.click_order_modal_close_js()
