@@ -24,3 +24,4 @@ htmlcov/
 Thumbs.db
 *.log
 /allure-results
+/tests/__pycache____pycache__/
